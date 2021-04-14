@@ -138,14 +138,317 @@ qnorm(0.025, mean=0, sd=1)
 
 ### 1) If the variances are know
 
-Test statistics: Z0 (two-side test)
-
-If sigma = sigma1 = sigma2 = 0.3
-
 $$
 If \; \sigma=\sigma_{1}=\sigma_{2}=0.3 \qquad H_{0}:\mu_{1}=\mu_{2}, \ H_{1}:\mu_{1}\neq\mu_{2} \qquad Z_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{\sqrt{\frac{\sigma_2^1}{n_{1}}+{\frac{\sigma_2^2}{n_{2}}}}}
 $$
 
+Test statistics: Z0 (two-side test)
+
+If sigma = sigma1 = sigma2 = 0.3
+
+1.  기각역을 통한 검정 \|Z(alpha/2)\| \< \|Z0\| 이면 기각 (결과: H0 기각)
+
 ```{r}
-z0 = (y1_bar - y2_bar) / sqrt(0.3^2 * (1/n1 + 1/n2)); z0
+z0 = (y1_bar - y2_bar) / sqrt(0.3^2 * (1/n1 + 1/n2)); z0 # 검정 통계량
+
+qnorm(0.025) # alpha = 0.05에서 기각역 Z0.025(df) = -1.95(양측 검정)
+```
+
+2.  유의 수준을 통한 검정 alpha = 0.05 \> p-value 이면 기각 (결과: H0 기각)
+
+```{r}
+2*pnorm(z0) # p-value = 0.038 (양측 검정)
+```
+
+3.  패키지를 이용한 검정
+
+```{r}
+# Using BSDA Package
+# install.packages('BSDA')
+library(BSDA)
+z.test(y1, y2, sigma.x=0.3, sigma.y=0.3) # H0 기각(H1 채택, alternative hypothesis: y1 - y2 != 0)
+```
+
+### 2) If the variances are unknown(대부분의 경우)
+
+Case1: Large Sample Size
+
+$$
+H_{0}:\mu_{1}=\mu_{2}, \ H_{1}:\mu_{1}\neq\mu_{2} \qquad Z_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{\sqrt{\frac{S_2^1}{n_{1}}+{\frac{S_2^2}{n_{2}}}}}
+$$
+
+n \> 30 =\> Sample sizes were large enough =\> Z-test
+
+1.  기각역을 통한 검정 \|Z(alpha/2)\| \< \|Z0\| 이면 기각 (결과: H0 기각)
+
+```{r}
+z0 = (y1_bar - y2_bar) / sqrt(y1_sig2/n1 + y2_sig2/n2); z0 # 검정 통계량
+
+qnorm(0.025) # alpha = 0.05에서 기각역 Z0.025(df) = -1.95(양측 검정)
+```
+
+2.  유의 수준을 통한 검정 alpha = 0.05 \> p-value 이면 기각 (결과: H0 기각)
+
+```{r}
+2*pnorm(z0) # p-value = 0.038 (양측 검정)
+```
+
+Case2 1: Small Sample Size, $\sigma_1^2 = \sigma_2^2$ (크기가 작고 모분산이 같은 경우)
+
+$$
+t_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{S_{p}\sqrt{\frac{1}{n_{1}}+{\frac{1}{n_{2}}}}} \qquad S_p^2=\frac{{(n_1-1)}S_1^2-(n_2-1)S_2^2}{n_1+n_2-2} \qquad v=n_1+n_2-2
+$$
+
+1.  기각역을 통한 검정 \|t(alpha/2)\| \< \|t0\| 이면 기각 (결과: H0 기각)
+
+```{r}
+n = n1 + n2 - 2 # 자유도
+s_pool2 = ((n1-1)*y1_sig2 + (n2-1)*y2_sig2)/n # Sp^2
+t0 = (y1_bar-y2_bar) / (sqrt(s_pool2) * sqrt(1/n1 + 1/n2)); t0 # 검정 통계량
+
+qt(0.025,n) # alpha = 0.05에서 기각역 t0.025(df) = -1.95(양측 검정)
+```
+
+2.  유의 수준을 통한 검정 alpha = 0.05 \> p-value 이면 기각 (결과: H0 기각)
+
+```{r}
+2*pt(t0,n) # p-value = 0.038 (양측 검정)
+```
+
+3.  함수를 이용한 검정
+
+```{r}
+t_res <- t.test(y1, y2, alternative = 'two.sided', var.equal = T) # alternativ: 검정 형태(y1, y2가 'tow.sided'(같다),'greater','less'), var.equal: 분산이 같은가 가정 여부
+t_res # H0 기각(H1 채택, alternative hypothesis: y1 - y2 != 0)
+
+
+# 검정한 특정 값만 가져오기
+t_res$statistic # t statistic
+t_res$conf.int[1:2] # 95% confidence interval
+t_res$p.value # p-value
+```
+
+4.  95% confidence interval(95% 신뢰구간 )
+
+    (추정량 - t값 \* 추정된 표준오차, 추정량 + t값 \* 추정된 표준오차)
+
+```{r}
+diff = y1_bar - y2_bar # 추정량
+
+t = qt(0.025, df = n, lower.tail = F); t
+interval = t * (sqrt(s_pool2) * sqrt(1/n1 + 1/n2))
+
+c(diff - interval, diff + interval)
+```
+
+case 2-2 Small Sample Size, $\sigma_1^2 \neq \sigma_2^2$ (크기가 작고 모분산이 다른 경우)
+
+$$
+t_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{\sqrt{\frac{S_1^2}{n_{1}}+{\frac{S_2^2}{n_{2}}}}} \qquad v=\frac{{(\frac{S_1^2}{n_{1}}+\frac{S_2^2}{n_{2}})^2}}{\frac{(S_1^2/n_1)^2}{n_{1}-1}+\frac{(S_2^2/n_2)^2}{n_{2}-1}}
+$$
+
+n \< 30 (Sample sizes were small) & sigma1 != sigma2
+
+1.  기각역을 통한 검정 \|t(alpha/2)\| \< \|t0\| 이면 기각 (결과: H0 기각)
+
+```{r}
+t0 = (y1_bar-y2_bar) / sqrt(y1_sig2/n1 + y2_sig2/n2); t0 # 검정 통계량
+
+qt(0.025,n) # alpha = 0.05에서 기각역 t0.025(df) = -1.95(양측 검정)
+
+
+v = ((y1_sig2/n1) + (y2_sig2/n2))^2 /
+  (((y1_sig2/n1)^2 / (n1-1)) + ((y2_sig2/n2)^2 / (n2-1))); v # 공분산
+```
+
+2.  함수를 이용한 검정
+
+```{r}
+t_res2 <- t.test(y1, y2, alternative = 'two.sided', var.equal = F); t_res2 # H0 기각(H1 채택, alternative hypothesis: y1 - y2 != 0)
+
+
+# 검정한 특정 값만 가져오기
+t_res2$parameter # d.f.
+```
+
+### 3) Tests on Variance of Normal Distribution
+
+Case 1: One-sample test on variance of Normal Distribution
+
+$$
+H_0:\sigma^2=\sigma_0^2 \qquad \chi_0^2=\frac{(n-1)S^2}{\sigma_0^2}
+$$
+
+1.  공식을 이용해 검정
+
+```{r}
+chisq0 = ((n1-1) * y1_sig2) / 0.15; chisq0
+```
+
+2.  패키지를 이용해 검정
+
+```{r}
+# install.packages('EnvStats')
+library(EnvStats)
+res = varTest(y1, alternative='less', sigma.squared=0.15); res # H0 기각하지 못함(H1 기각, sigma1^2 = 0.15)
+
+# H0 : sigma2^2 = 0.05 vs H1 : sigma2^2 > 0.05
+varTest(y2, alternative = 'greater', sigma.squared = 0.05) # H0 기각하지 못함(H1 기각, sigma2^2 = 0.05)
+```
+
+Case2: Two sample test on variance of Normal Distribution
+
+$$
+H_0:\sigma_1^2=\sigma_2^2,\ H_1:\sigma_1^2\neq\sigma_2^2 \qquad F_0=\frac{S_1^2}{S_2^2}
+$$
+
+앞에서 n이 작은 모평균 검정 시, 이 모분산이 같다는 가정을 먼저 시행함
+
+(등분산 가정이 필요한 If the variances are unknown 2-1 상황과 연계 중요)
+
+```{r}
+f0 = y1_sig2/y2_sig2; f0 # 검정 통계량
+var.test(y1, y2, alternative = 'two.sided') # H0 기각하지 못함(sigma1^2 = sigma2^2)
+```
+
+$H_0:\sigma_1^2=2\sigma_2^2,\ H_1:\sigma_1^2\neq2\sigma_2^2$
+
+```{r}
+x1 <- rnorm(100, 0, sqrt(2)) # 3번째 자리는 표준편차 아래 분산의 2배
+x2 <- rnorm(100, 0, 1)
+var.test(x1, x2, ratio=2, alternative='two.sided') # H0 기각하지 못함(sigma1^2 = 2 * sigma2^2) # ratio: var.test의 H1에서 검정하는 분산의 비율 여기선 2:1, sigma1 = 2 * sigma2
+```
+
+# Chapter 3 Analysis of Variance
+
+Example 3.1: Etch Rate Data
+
+4 levels of RF power : (160W, 180W, 200W, 220W)
+
+Replicated 5 times : (1, 2, 3, 4, 5) (runs made in random order)
+
+![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20231629.png){width="542"}
+
+```{r}
+power <- factor(c(160,180,200,220)); power # 레벨
+times <- factor(c(1,2,3,4,5)); times
+
+dat <- expand.grid(times=times, power=power); dat # 수준 조합
+
+etch_rate <- c(575,542,530,539,570,
+               565,593,590,579,610,
+               600,651,610,637,629,
+               725,700,715,685,710)
+
+dat$etch <- etch_rate; dat # 데이터에 삽입
+```
+
+etch data의 $y_{i.},\ \overline{y_{i.}}$ (row 합, 평균) 구하기
+
+1.  for 문을 이용
+
+```{r}
+## Method 1
+y_idot <- rep(0,4)
+y_idotbar <- rep(0,4)
+
+for(i in 1:4){
+  y_idot[i] = sum(dat$etch[dat$power==levels(dat$power)[i]]) # levels(): 해당 값의 레벨을 가져옴
+  y_idotbar[i] = mean(dat$etch[dat$power==levels(dat$power)[i]])
+}
+
+y_idot
+y_idotbar
+```
+
+2.  tapply이용
+
+```{r}
+## Method 2
+y_idot2 <- tapply(dat$etch, dat$power, function(x) sum(x))
+y_idot2
+
+y_idotbar2 <- tapply(dat$etch, dat$power, function(x) mean(x))
+y_idotbar2
+```
+
+Box plot & Scatter plot
+
+```{r}
+par(mfrow=c(1,2))
+
+# Box plot(factor ~ factor)
+plot(dat$etch ~ dat$power,
+     main = 'Example 3.1 by boxplot',
+     xlab = 'Power', ylab = 'Etch-rate')
+
+# Scatter plot(factor ~ character)
+plot(dat$etch ~ as.character(dat$power),
+     main = 'Example 3.1 by scatter plot',
+     xlab = 'Power', ylab = 'Etch-rate')
+```
+
+## Completely Randomized Design (CRD)
+
+-   **a** levels or treatments
+
+-   **n** replicates
+
+-   Run in random order
+
+-   There are fixed effects case and the random effects case.
+
+-   The goal is to test hypotheses about the equality of the 𝑎treatment means
+
+### One Way ANOVA model
+
+-   effects model: $\mu_{ij} = \mu + \tau_i + \epsilon_{ij}$
+
+-   Formal Statistical Hypothesis: $H_0:\tau_1=…=\tau_a=0, \ H1:At \ least \ one \ is \ different$
+
+-   Decomposition of the Total Sum of Squares (SS):
+
+    $\sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{..})^2 = n\sum_{i=1}^a(y_{i.}-\overline{y}_{..})^2 + \sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{i.})^2 \\SS_T = SS_{Treatments} + SS_E$
+
+![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20234918.png){width="587"}
+
+1.  aov를 이용해서 CRD 분석(권장)
+
+```{r}
+## One-way ANOVA
+fit_etch <- aov(etch ~ power, data=dat) # 분산분석
+anova(fit_etch)
+summary(fit_etch)
+```
+
+2.  lm을 이용해서 CRD 분석(권장하지 않음)
+
+```{r}
+# If is same as aov function if treatment's(power) value type is factor
+# 분산분석을 원하면 lm보단 aov로 하는게 좋다
+fit_etch2 <- lm(etch ~ power, data=dat) # 원하는 결과
+anova(fit_etch2)
+summary(fit_etch2)
+
+fit_etch3 <- lm(etch ~ as.numeric(as.character(power)), data=dat) # factor가 아닌 수치형 자료여서 aov와 다른결과
+anova(fit_etch3)
+summary(fit_etch3)
+```
+
+factor형 -\> 수치형 변환
+
+```{r}
+dat$power
+as.numeric(dat$power) # 바로 수치형으로 변환하면 다른 결과가 나온다
+as.numeric(as.character((dat$power))) # 문자형 변경 후 수치형 변경 시 원하는 결과를 얻음
+```
+
+3.  Sum of Square
+
+```{r}
+SS_vec <- anova(fit_etch)$'Sum Sq'; SS_vec
+SS_total <- sum(SS_vec)
+SS_treat <- SS_vec[1]
+SS_error <- SS_vec[2]
+SS_total; SS_treat; SS_error
 ```
