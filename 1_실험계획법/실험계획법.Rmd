@@ -327,7 +327,9 @@ Example 3.1: Etch Rate Data
 
 Replicated 5 times : (1, 2, 3, 4, 5) (runs made in random order)
 
-![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20231629.png){width="542"}
+-   data
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20231629.png){width="542"}
 
 ```{r}
 power <- factor(c(160,180,200,220)); power # 레벨
@@ -396,11 +398,13 @@ plot(dat$etch ~ as.character(dat$power),
 
 -   Run in random order
 
--   There are fixed effects case and the random effects case.
+-   There are fixed effects case
+
+    (Fixed Effects Model(CRD, etc): treatment는 이미 정해진 상황에서 실험 순서를 random으로 진행한다. \<-\> Random Effects Model은 treatment를 random하게 선택한다.)
 
 -   The goal is to test hypotheses about the equality of the 𝑎treatment means
 
-### One Way ANOVA model
+### 1) One Way ANOVA model
 
 -   effects model: $\mu_{ij} = \mu + \tau_i + \epsilon_{ij}$
 
@@ -408,11 +412,15 @@ plot(dat$etch ~ as.character(dat$power),
 
 -   Decomposition of the Total Sum of Squares (SS):
 
-    $\sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{..})^2 = n\sum_{i=1}^a(y_{i.}-\overline{y}_{..})^2 + \sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{i.})^2 \\SS_T = SS_{Treatments} + SS_E$
+    $$
+    \sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{..})^2 = n\sum_{i=1}^a(y_{i.}-\overline{y}_{..})^2 + \sum_{i=1}^a\sum_{j=1}^n(y_{ij}-\overline{y}_{i.})^2 \\SS_T = SS_{Treatments} + SS_E
+    $$
 
-![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20234918.png){width="587"}
+-   ANOVA table
 
-1.  aov를 이용해서 CRD 분석(권장)
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-14%20234918.png){width="587"}
+
+-   aov를 이용해서 CRD 분석(권장)
 
 ```{r}
 ## One-way ANOVA
@@ -452,3 +460,715 @@ SS_treat <- SS_vec[1]
 SS_error <- SS_vec[2]
 SS_total; SS_treat; SS_error
 ```
+
+### 2) Model Adequacy Checking in the ANOVA
+
+#### Checking normal assumption(정규성 가정)
+
+```{r}
+# Method 1
+# Q-Q Plot
+# 직선상에 존재하면 정규성을 만족
+par(mfrow = c(1,1))
+qqnorm(fit_etch$residuals)
+qqline(fit_etch$residuals)
+```
+
+```{r}
+# Method 2
+# aov 적합값을 plot으로 바로 그리면 Nomal Q-Q plot을 제공
+par(mfrow = c(2,2))
+plot(fit_etch)
+```
+
+```{r}
+# Method 3
+# Shapiro Wilk test
+# H0:정규분포를 따른다 vs H1:정규분포를 따르지 않는다.
+shapiro.test(fit_etch$residuals) # H0를 기각할 수 없다.
+```
+
+#### Plot of residuals versus run order or time(독립성 가정)
+
+```{r}
+# Check for residual plots
+# 기존 잔차들의 plot
+par(mfrow = c(1,1))
+plot(fit_etch$residuals)
+
+# 잔차 순서를 랜덤하게 변경
+set.seed(1)
+spl_idx <- sample(1:20, 20); spl_idx
+
+# 잔차 순서를 랜덤하게 고려한 plot
+# 특정한 패턴을 확인할 수 없다(독립성 가정 만족)
+plot(fit_etch$residuals[spl_idx],
+     main = 'Plot of residuals vs run order or time',
+     ylab = 'residual', xlab = 'Run order')
+abline(h=0, col='red')
+```
+
+#### Constrant variance(등분산 가정)
+
+```{r}
+# Levene’s test
+# install.packages('lawstat')
+library(lawstat)
+
+## H0: The k group variances are equal.
+levene.test(dat$etch, dat$power, location ='mean')
+```
+
+### 3) Factors: Qualitative or Quantitative
+
+-   정량적 요인인 경우 회귀 모형을 고려
+
+-   질적 요인인 경우 다중 비교를 고려
+
+![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20145721.png)
+
+```{r}
+## Numeric Power Regression models
+# Linear anova
+# (중요)factor는 character로 변경 후 numeric으로 변경해 사용
+dat$num_power <- as.numeric((as.character((dat$power))))
+
+fit_reg <- lm(etch ~ num_power, data=dat)
+summary(fit_reg)
+
+
+# Linear 그래프
+par(mfrow=c(1,1))
+plot(dat$etch ~ dat$num_power,
+     main = 'Example 3.1 for Regression',
+     xlab = 'Power', ylab = 'Etch-rate')
+abline(fit_reg)
+```
+
+```{r}
+# Quadratic anova
+fit_reg2 <- lm(etch ~ num_power + I(num_power^2),data = dat)
+summary(fit_reg2)
+
+
+# Quadratic with Linear그래프
+par(mfrow=c(1,1))
+plot(dat$etch ~ dat$num_power,
+     main = 'Example 3.1 for Regression',
+     xlab = 'Power', ylab = 'Etch-rate')
+abline(fit_reg)
+
+lines(dat$num_power, y=fit_reg2$fitted.values, col='red')
+legend('topleft', legend = c('Linear','Quadratic'),
+       col=c('black','red'), lty=c(1,1))
+```
+
+## After ANOVA
+
+ANOVA분석에서 H0 reject에 성공 했을 시 어떤 factor, factor간 interaction이 유의해서 H0를 reject할 수 있었는지 model을 factor별로 분해해 ANOVA로 확인하는 과정
+
+### 1) Contrasts
+
+-   Contrasts is a linear combination of parameters of the form($C_i$는 $\mu_i$앞의 상수)
+
+$$
+\tau = \sum_{i=1}^ac_i\mu_i \quad where \ \sum_{i=1}^ac_i=0
+$$
+
+-   Hypotheses set up prior to the running of experiment(원하는 조합의 $c_i\mu_i$ 합이 0인가에 관심)
+
+$$
+H_0:\sum_{i=1}^ac_i\mu_i=0 \quad (\leftarrow\tau=0)
+$$
+
+-   통계량
+
+$$
+F = \frac{MS_C}{MS_E}=\frac{SS_C/1}{MS_E}\sim F_{\alpha,1,N-a} \quad where \ SS_C=\frac{(\sum_i^ac_i\overline{\mu_i})^2}{(1/n)\sum c_i^2} \; with \; df = 1
+$$
+
+#### Orthogonal Contrasts
+
+-   Definition : Two contrasts with coefficients $c_i$and $d_i$are orthogonal if
+
+    (각각의 contrasts의 $\mu_i$앞 같은 위치 상수 $c_i, d_i$끼리의 곱의 합이 0이면 orthogonal하다)
+
+$$
+\sum_{i=1}^ac_id_i=0
+$$
+
+-   a개의 treatment에서는 최대 (a-1)개의 orthogonal contrasts partition이 생길 수 있다.
+
+    partitioning된 orthogonal contrasts의 $SS_C, df_C$의 합은 $SS_{treatment}, df_{treatment}$가 된다.
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20150843.png){width="478"}
+
+<!-- -->
+
+-   ANOVA table
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20150902-01.png)
+
+1.  데이터 정의
+
+```{r}
+power = factor(c(160,180,200,220))
+times = factor(c(1,2,3,4,5))
+
+dat = expand.grid(times=times, power=power)
+
+dat$value = c(575,542,530,539,570,
+              565,593,590,579,610,
+              600,651,610,637,629,
+              725,700,715,685,710)
+```
+
+```{r}
+# power factor에 contrast 생성
+c_mat = matrix(c(1,-1,0,0,
+                 1,1,-1,-1,
+                 0,0,1,-1),ncol=3) # 검정하고자 싶은 가설을 colum 단위로 넣어줘야함
+
+contrasts(dat$power, 3) = c_mat # power factor에 contrasts 3개를 저장
+dat$power
+```
+
+2.  orthogonal contrasts anova(기본 aov는 partitioning 된 값을 보여주지 않는다.)
+
+```{r}
+fit_cont = aov(value ~ power, data=dat)
+anova(fit_cont)
+```
+
+aov
+
+-   split: contrast에 따라 검정을 분해하는 기능
+
+```{r}
+# split 할 항목 이름을 지정
+power_list = list('c1: mu_1 = mu_2' = 1,
+                  'c2: mu_1 + mu_2 = mu_3 + mu_4' = 2,
+                  'c3: mu_3 = mu_4' = 3)
+
+summary.aov(fit_cont, split = list(power=power_list)) # 각 contrast로 분해한 anova
+```
+
+#### Scheffe's Method
+
+각각이 orthogonal contrasts조건을 만족하지 않더라도 검정 가능(최대 a-1개 초과 검정 가능)
+
+그러나 검정 결과가 sensitive하지 않다.(잘 기각을 하지 못한다)
+
+-   Decision: Reject hypothesis H0:𝑐1𝑢𝜇1+⋯+𝑐𝑎𝑢𝜇𝑎=0
+
+$$
+IF, \mid C_u\mid > S_{\alpha,u} \ where \ S_{\alpha,u} = S_{C_u}\sqrt{(a-1)F_{\alpha, a-1, N-a}}\\S_{C_u} = \sqrt{MS_E\sum_{i=1}^a(C^2_{iu}/n_i)},\ the \ Standard \ error \ of \ the \ contrast
+$$
+
+scheffe.test 검정 결과 해석
+
+-   Scheffe: $S_{C_u}$값
+
+-   groups: contrast를 비슷한 값끼리 묶어줌
+
+agricolae패키지 내 함수
+
+```{r}
+# install.packages('agricolae')
+library(agricolae)
+res_scheffe = scheffe.test(fit_cont, trt='power'); res_scheffe
+
+plot(res_scheffe)
+```
+
+### 2) Comparing Pairs of Treatment Means(쌍비교)
+
+#### Fisher Least Significant Difference (LSD) Method
+
+Use the t statistic for testing $𝐻0∶\mu_i−\mu_𝑗=0$ for all pairwise means
+
+Reject H0 if
+
+$$
+\mid \overline{\mu}_{i.}-\overline{\mu}_{j.} \mid \ > \ t_{\alpha/2, N-a}\sqrt{MS_E(1/n_i+1/n_j)}, \\ where \ LSD = t_{\alpha/2, N-a}\sqrt{MS_E(1/n_i+1/n_j)}
+$$
+
+agricolae패키지 내 함수
+
+```{r}
+# LSD test 같은 경우엔 all pairwise means 에 대해 test 하지만
+# family error rate을 원하는 유의수준으로 control하는게 불가능
+# library(agricolae)
+res_LSD = LSD.test(fit_cont, trt = 'power')
+res_LSD
+plot(res_LSD)
+```
+
+#### Tukey's test
+
+Reject H0 if
+
+$$
+\mid \overline{\mu}_{i.}-\overline{\mu}_{j.} \mid \ > T_\alpha = q_\alpha(a,f)\sqrt{ME_E/n}, \\ where \ f \ is \ df \ of \ ME_E \ and \ q_\alpha(a,f) \\ is \ the \ upper \ \alpha \ percentile \ of \ q \ (q = (\overline{y}_{max} - \overline{y}_{min})/\sqrt{MS_E(1/n_i+1/n_j)})
+$$
+
+1.  agricolae 패키지 내 함수
+
+```{r}
+# family error rate 원하는 유의수준으로 control 가능
+# library(agricolae)
+res_Tukey = HSD.test(fit_cont, 'power')
+res_Tukey
+plot(res_Tukey)
+```
+
+2.  R 기본 함수
+
+```{r}
+res_Tukey2 = TukeyHSD(fit_cont, 'power', conf.level = 0.95)
+res_Tukey2
+plot(res_Tukey2)
+```
+
+### 3) Comparing with a control
+
+Dunnett method: 대조를 위해 만든 조건을 control(대조군)이라고 하고, 그것과 나머지(a - 1개)의 treatment mean을 모두 비교
+
+ex) 제약회사에서 약의 투약 효과를 확인 하기 위해, 신약 0mg, 10mg, 15mg, 20mg을 포함한 주사를 투약하는 실험을 진행한다. 여기서 0mg은 control인 위약이다. Comparing with a control에서는 위약의 결과 평균 대비 나머지 결과 평균을 모두 짝지어 비교한다.
+
+$\mu_a$를 control level의 treatment mean이라고 하면
+
+-   Hypotheses: $H0: \mu_i = \mu_a \ vs \ H1:\mu_i \neq \mu_a \ for \ i=1,…,a-1$
+
+-   Reject H0 if: $\mid \overline{y}_{i.}-\overline{y}_{a.} \mid \ > \ d_\alpha(a-1,f)\sqrt{MS_E(1/n_i+1/n_a)}$
+
+```{r}
+# install.packages('DescTools')
+library(DescTools)
+DunnettTest(dat$value, dat$power, control='220', conf.level=0.95) # 220수준 값과 비교
+```
+
+## The random effects model
+
+-   The experimenter chooses 𝑎of these levels at random \<-\> Fixed Effects Model
+
+-   Model: $$y_{ij} = \mu+\tau_i+\epsilon_{ij}, \quad i = 1,2,…,a; \; j=1,2,…,n \\ Where \ both \tau_i \ and \ \epsilon_{ij} \ are \ random \ and \ independent$$
+
+-   Assumptions:
+
+$$
+\tau_i\sim IN(0,\sigma^2_\tau) \ and \ \epsilon_{ij} \sim IN(0,\sigma^2) \ with \ \tau_i\perp\epsilon_{ij} \\ Note \ that \ Var(y_{ij}) = \sigma^2_\tau+\sigma^2 \ (Variance \ Components)
+$$
+
+-   Hypotheses:
+
+$$
+H0: \sigma^2_\tau=0 \; vs \; H1:\sigma^2_\tau>0
+$$
+
+-   data
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20173719.png){width="418"}
+
+Random Effects Model data
+
+```{r}
+looms = factor(1:4)
+times = factor(1:4)
+
+dat_3_11 = expand.grid(times=times, looms=looms)
+
+dat_3_11$value = c(98,97,99,96,
+                   91,90,93,92,
+                   96,95,97,95,
+                   95,96,99,98)
+```
+
+ANOVA
+
+```{r}
+fit_re = aov(value ~ looms, data=dat_3_11)
+res_re = anova(fit_re); res_re
+```
+
+-   Estimating the model parameters(Variance Components):
+
+$$
+E[MS_{treatment}]=\sigma^2+n\sigma^2_\tau \ and \ E[MS_E] = \sigma^2 \\\Rightarrow \widehat{\sigma}^2=MS_E, \quad\widehat{\sigma}^2_\tau=\frac{MS_{treatment}-MS_E}{n}
+$$
+
+```{r}
+sigma2 = res_re$'Mean Sq'[2]; sigma2
+sigma_tau2 = (res_re$'Mean Sq'[1] - sigma2)/4; sigma_tau2
+```
+
+-   Confidence interval for the error variance:
+
+$$
+\frac{(N-a)MS_E}{\chi^2_{\alpha/2,N-a}} \leq \sigma^2 \leq \frac{(N-a)MS_E}{\chi^2_{1-(\alpha/2),N-a}}
+$$
+
+```{r}
+12 * sigma2 / qchisq(0.975,12); 12 * sigma2 / qchisq(0.025,12)
+```
+
+lme4 패키지를 이용한 ANOVA 분석
+
+```{r}
+# install.packages('lme4')
+library(lme4)
+
+fit_re2 <- lmer(value ~ (1|looms), data=dat_3_11); fit_re2 # random effect model
+```
+
+```{r}
+vc = as.data.frame(VarCorr(fit_re2)); vc
+vc[1,4]; sigma_tau2
+vc[2,4]; sigma2
+```
+
+```{r}
+confint(fit_re2, oldNames=F)
+```
+
+# Chapter 4 Experiments with Blocking Factors
+
+## The Randomized Complete Block Design (RCBD)
+
+### The Blocking Principle
+
+-   A nuisance factor is a factor that probably has some effect on the response, but it's of no
+
+    interest
+
+-   Blocking is a technique for dealing with nuisance factors
+
+-   If the nuisance variable is known and controllable
+
+    → Use blocking, Randomized Complete Block Design (RCBD
+
+-   If the factor is known and uncontrollable
+
+    → Use analysis of covariance
+
+-   If the factor is unknown and uncontrollable a "lurking" variable
+
+    → Randomization balances out its impact across the experiment
+
+### Statistical Analysis of the RCBD
+
+-   A Statistical Model ( effects model ) for the:
+
+$$
+y_{ij} = \mu + \tau_i + \beta_j + \epsilon_{ij}, \quad i=1,2,…,a; \; j=1,2,…,b
+$$
+
+Where $\mu$is an overall mean, $\tau_i$is the effect of $i$ th treatment, $\beta_j$is the effect of $j$ th block
+
+-   Assumptions (for Fixed Factors):
+
+$$
+\sum_{i=1}^a\tau_i=0 \; and \; \sum_{j=1}^b\beta_j=0 \; with \; \epsilon_{ij}\sim IN(0,\sigma^2)
+$$
+
+-   Hypothesis:
+
+$$
+H0:\mu_1=\mu_2=…=\mu_a \; vs \; H1:at \ least \ one \ \mu_i\neq \mu_j\\where \ \mu_i=(1/b)\sum_{j=1}^b(\mu + \tau_i + \beta_j)=\mu+\tau_i \\\leftrightarrow H0:\tau_1=\tau_2=…=\tau_a=0 \; vs \; H1:\tau_i \neq 0 \ at \ least \ one \ i
+$$
+
+-   ANOVA table
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20194742.png)
+
+-   통계량
+
+    $$
+    Test \ Static: F_0 = \frac{MS_{Treatments}}{MS_E}\sim F_{\alpha,a-1,(a-1)(b-1)} \quad under \; H_0:\tau_1=…=\tau_a\\\rightarrow Reject \ H_0 \ if \ F_0 \ > \ F_{\alpha,a-1,(a-1)(b-1)}
+    $$
+
+-   data
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20194756.png)
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20194914.png)
+
+data
+
+```{r}
+psi = factor(c(8500, 8700, 8900, 9100))
+block = factor(1:6)
+
+dat_4_1 = expand.grid(block=block, psi=psi); dat_4_1
+
+dat_4_1$value = c(90.3, 89.2, 98.2, 93.9, 87.4, 97.9,
+                  92.5, 89.5, 90.6, 94.7, 87.0, 95.8,
+                  85.5, 90.8, 89.6, 86.2, 88.0, 93.4,
+                  82.5, 89.5, 85.6, 87.4, 78.9, 90.7)
+```
+
+total
+
+```{r}
+trt_total = tapply(dat_4_1$value, dat_4_1$psi, function(x) sum(x)); trt_total
+block_total = tapply(dat_4_1$value, dat_4_1$block, function(x) sum(x)); block_total
+total = sum(trt_total); total # sum(block_total)
+```
+
+RCBD design
+
+```{r}
+fit_RCBD = aov(value ~ psi + block, data=dat_4_1) # block이 추가
+anova(fit_RCBD) # (trt)H0를 기각한다, block의 검정값은 관심사가 아니다
+```
+
+모형의 타당성 검정
+
+```{r}
+# Model Adequacy checking (Normality, constant variance, independence)
+par(mfrow=c(2,2))
+plot(fit_RCBD)
+
+shapiro.test(fit_RCBD$residuals)
+
+
+# Some other plots
+Resid = fit_RCBD$residuals ## resid(fit_RCBD)
+
+par(mfrow=c(1,2))
+
+plot(Resid ~ as.character(dat_4_1$psi),
+     xlab = 'Treatments', ylab='Residuals',
+     main = 'Residuals by Treatments', pch = 4) # as.character로 변경 안하면 box plot이 결과물로 나옴
+abline(h=0, col='red')
+
+plot(Resid ~ as.character(dat_4_1$block),
+     xlab = 'Blocks', ylab='Residuals',
+     main = 'Residuals by Blocks', pch = 2)
+abline(h=0, col='blue')
+```
+
+### Some Other Aspects of RCBD(같은 데이터를 CRD로 분석)
+
+-   ANOVA table(run by CRD, n=b=6)
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20200018.png)
+
+-   둘다 H0를 기각 하지만 RCBD가 더 민감하게 검정(F0값이 더 크다)
+
+-   CRD의 $SS_E, \ df_E$는 RCBD에선 partitioning돼서 $SS_E+SS_B, \ df_E+df_B$값과 같다
+
+    (F0값이 변한 이유)
+
+CRD와 RCBD비교
+
+```{r}
+# CRD
+fit_CRD = aov(value ~ psi, data=dat_4_1)
+anova(fit_CRD)
+```
+
+```{r}
+# RCBD
+fit_RCBD = aov(value ~ psi + block, data=dat_4_1)
+anova(fit_RCBD)
+```
+
+### Random Treatments and/or Blocks
+
+-   model: $y_{ij} = \mu + \tau_i + \beta_j + \epsilon_{ij}; \ where \ \tau_j \ is \ fixed \ and \ \beta_j \ is \ random(\beta_j\sim IN(0,\sigma^2_\beta))$
+
+-   통계량: $F_0 = \frac{MS{Treatment}}{MS_E}$
+
+-   ANOVA-type Estimator of $\tau^2_\beta$:
+
+    $$
+    \widehat{\sigma}^2_\beta = \frac{(MS_{Block} - MS_E)}{a}\\\rightarrow E(MS_{Block})=\sigma^2+a\sigma^2_\beta
+    $$
+
+lme4 패키지를 이용해 분석
+
+```{r}
+# Blocks are assumed random
+library(lme4)
+
+fit_rblock = lmer(value ~ psi + (1|block), data = dat_4_1); fit_rblock
+```
+
+```{r}
+# draw variance component
+vc = as.data.frame(VarCorr(fit_rblock)); vc
+var_block = vc[1,4]; var_block
+var_resid = vc[2,4]; var_resid
+```
+
+### Estimating Missing Values
+
+Estimating the missing observation 𝑥so that it will have a minimum contribution to the
+
+error sum of squares
+
+-   $\frac{\partial }{\partial x}(SS_E)=0$을 만족 시키는 x 값 공식: ($y\cdot$은 해당 결측치 x에 해당하는 위치 i, j의 y값)
+
+    $$
+    x=\frac{ay_{i.}\cdot+by_{.j}\cdot-y_{..}\cdot}{(a-1)(b-1)}
+    $$
+
+-   $df_E$는 결측치 갯수 만큼 빼고 $df_T$는 그대로이다($df_E$-1)
+
+-   example
+
+    ![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20201806.png)
+
+-   example 결측값:
+
+    $$
+    x=\frac{ay_{i.}\cdot+by_{.j}\cdot-y_{..}\cdot}{(a-1)(b-1)}=\frac{4(445.4)+6(267.5)-2060.4}{(3)(5)}=91.08
+    $$
+
+data
+
+```{r}
+# Estimating Missing values
+psi = factor(c(8500,8700,8900,9100))
+block = factor(1:6)
+
+dat_4_1 = expand.grid(block=block, psi=psi); dat_4_1
+
+dat_4_1$value = c(90.3, 89.2, 98.2, 93.9, 87.4, 97.9,
+                  92.5, 89.5, 90.6, 94.7, 87.0, 95.8,
+                  85.5, 90.8, 89.6, 86.2, 88.0, 93.4, 
+                  82.5, 89.5, 85.6, 87.4, 78.9, 90.7)
+
+
+dat_4_1$value[10] = NA; dat_4_1 # 10번째 값이 결측치
+
+mis_lev = dat_4_1[is.na(dat_4_1$value),]; mis_lev
+```
+
+결측치 예측
+
+yi.\_prime = sum(dat_4\_1[dat_4\_1\$psi == mis_lev[,'psi'], 'value'], na.rm = T); yi.\_prime
+
+-   dat_4\_1[dat_4\_1\$psi == mis_lev[,'psi'], 'value']: mis_lev에서 열psi(8700)가 같은 value를 가져옴
+
+-   sum(,na.rm = T): NA값이 있으면 제거하고 합함(오류가 나지 않음)
+
+```{r}
+a = length(levels(dat_4_1$psi)); a # trt의 갯수
+b = length(levels(dat_4_1$block)); b # block의 갯수
+
+yi._prime = sum(dat_4_1[dat_4_1$psi == mis_lev[,'psi'], 'value'], na.rm = T); yi._prime # 결측치와 같은 위치trt인 값 합
+y.j_prime = sum(dat_4_1[dat_4_1$block == mis_lev[,'block'], 'value'], na.rm = T); y.j_prime # 결측치와 같은 위치block인 값 합
+y.._prime = sum(dat_4_1$value, na.rm = T); y.._prime # 결측치를 제외한 전체 합
+
+x = (a*yi._prime + b*y.j_prime - y.._prime) / ((a-1)*(b-1)); x
+```
+
+결측치 있는 모델 분석(결측치를 고려 안함)
+
+```{r}
+impute_dat = dat_4_1 # dat_4_1복사
+impute_dat[is.na(dat_4_1$value),'value'] <- x
+
+fit_impute = aov(value ~ psi + block, data = impute_dat); fit_impute # (결측치를 고려 안함)
+```
+
+결측치 있는 모델 분석(결측치를 고려)
+
+```{r}
+res_impute = anova(fit_impute); res_impute
+
+# 결측치를 고려한 anova 계산
+ss_vec = res_impute$'Sum Sq'; ss_vec
+df_vec = res_impute$Df; df_vec
+
+ms_trt = ss_vec[1]/df_vec[1]; ms_trt
+ms_r = ss_vec[3]/(df_vec[3] - 1); ms_r
+
+f_value = ms_trt/ms_r; f_value
+pf(f_value, 3, 14, lower.tail=F)
+1- pf(f_value, 3, 14)
+```
+
+결측치 있는 모델 분석 함수(결측치를 고려)
+
+```{r}
+# customizing impute method 
+# consider n treatments and k missing values
+impute_missing = function(value, trt)
+{
+  # value = dat_4_1$value
+  # trt = dat_4_1[,1:2]
+  
+  n = ncol(trt)
+  mis_idx = which(is.na(value))
+  
+  coef_trt = rep(0,n)
+  for(k in 1:n)
+  {
+    coef_trt[k] = length(levels(trt[,k]))
+  }
+  
+  trt_sum = list()
+  for(i in 1:n)
+  {
+    trt_sum[[i]] = tapply(value, trt[,i], function(x) sum(x,na.rm=T))
+  }
+  total_sum = sum(trt_sum[[1]])
+  
+  tmp_sum = rep(0,n)
+  for(j in 1:length(mis_idx))
+  {
+    for(i in 1:n)
+    {
+      tmp_idx = which(trt[mis_idx,i]==levels(trt[,i]))
+      tmp_sum[i] = trt_sum[[i]][tmp_idx]
+    }
+    value[mis_idx[j]] = (sum(tmp_sum*coef_trt) - total_sum) / prod((coef_trt-1))
+  }
+  
+  data = data.frame(trt,value)
+  return(data)
+}
+
+impute_dat = impute_missing(dat_4_1$value, dat_4_1[,1:2]); impute_dat
+```
+
+## The Latin Square Design
+
+## Balanced Incomplete Block Design (BIBD)
+
+# Chapter 5 Factorial Experiments
+
+## Basic Definitions and Principles
+
+### Some Basic Definitions
+
+Factorial Designs: Most efficient in studying the effects of two or more factors
+
+Definition of a factor (main) effect: The change in the mean response when the factor is changed from low to high
+
+![](images/%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202021-04-16%20213849.png){width="600"}
+
+## Two Factor Factorial Design
+
+### Example 5.1: The Battery Life Experiment
+
+### The General Two Factor Factorial Experiment
+
+### Analysis of Variance Table
+
+### The Battery Design Experiment
+
+### The Assumption of No Interaction
+
+## The General Factorial Design
+
+### Three Factor Factorial Design
+
+### Factorials with more than two factors
+
+### Example 5.3: The Soft Drink Bottling Problem
+
+### 
