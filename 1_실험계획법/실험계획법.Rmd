@@ -193,7 +193,7 @@ qnorm(0.025) # alpha = 0.05에서 기각역 Z0.025(df) = -1.95(양측 검정)
 2*pnorm(z0) # p-value = 0.038 (양측 검정)
 ```
 
-Case2 1: Small Sample Size, $\sigma_1^2 = \sigma_2^2$ (크기가 작고 모분산이 같은 경우)
+Case2 1: Small Sample Size, $\sigma_1^2 = \sigma_2^2$ (크기가 작고 모분산이 같다고 가정)
 
 $$
 t_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{S_{p}\sqrt{\frac{1}{n_{1}}+{\frac{1}{n_{2}}}}} \qquad S_p^2=\frac{{(n_1-1)}S_1^2-(n_2-1)S_2^2}{n_1+n_2-2} \qquad v=n_1+n_2-2
@@ -241,7 +241,7 @@ interval = t * (sqrt(s_pool2) * sqrt(1/n1 + 1/n2))
 c(diff - interval, diff + interval)
 ```
 
-case 2-2 Small Sample Size, $\sigma_1^2 \neq \sigma_2^2$ (크기가 작고 모분산이 다른 경우)
+case 2-2 Small Sample Size, $\sigma_1^2 \neq \sigma_2^2$ (크기가 작고 모분산이 다르다고 가정)
 
 $$
 t_{0} = \frac{\overline{y_{1}}-\overline{y_{2}}}{\sqrt{\frac{S_1^2}{n_{1}}+{\frac{S_2^2}{n_{2}}}}} \qquad v=\frac{{(\frac{S_1^2}{n_{1}}+\frac{S_2^2}{n_{2}})^2}}{\frac{(S_1^2/n_1)^2}{n_{1}-1}+\frac{(S_2^2/n_2)^2}{n_{2}-1}}
